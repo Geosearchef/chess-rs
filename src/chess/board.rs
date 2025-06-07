@@ -1,7 +1,10 @@
 use std::{fmt::Display, num::NonZeroU8};
 use itertools::Itertools;
 
-use crate::chess::Coord;
+use crate::chess::{r#move::Move, vector::Vector};
+
+pub const BOARD_SIZE_X: i8 = 8;
+pub const BOARD_SIZE_Y: i8 = 8;
 
 const PIECE_TYPE_MASK: u8 = 0b0000_0111;
 const PIECE_COLOR_MASK: u8 = 0b0000_1000;
@@ -79,29 +82,29 @@ impl Piece {
     }
 
     pub fn is_white(&self) -> bool {
-        matches!(self.color(), Color::White)
+        self.color() == Color::White
     }
     pub fn is_black(&self) -> bool {
-        matches!(self.color(), Color::Black)
+        self.color() == Color::Black
     }
 
     pub fn is_pawn(&self) -> bool {
-        matches!(self.piece_type(), PieceType::Pawn)
+        self.piece_type() == PieceType::Pawn
     }
     pub fn is_knight(&self) -> bool {
-        matches!(self.piece_type(), PieceType::Knight)
+        self.piece_type() == PieceType::Knight
     }
     pub fn is_bishop(&self) -> bool {
-        matches!(self.piece_type(), PieceType::Bishop)
+        self.piece_type() == PieceType::Bishop
     }
     pub fn is_rook(&self) -> bool {
-        matches!(self.piece_type(), PieceType::Rook)
+        self.piece_type() == PieceType::Rook
     }
     pub fn is_queen(&self) -> bool {
-        matches!(self.piece_type(), PieceType::Queen)
+        self.piece_type() == PieceType::Queen
     }
     pub fn is_king(&self) -> bool {
-        matches!(self.piece_type(), PieceType::King)
+        self.piece_type() == PieceType::King
     }
 }
 
@@ -110,21 +113,39 @@ impl Piece {
 type BoardIndex = u8;
 
 pub struct Board {
-    squares: [[Option<Piece>; 8]; 8], // encoded as Option<Piece<NonZeroU8>> which is u8 with 0 representing None, Rust is cool
-    white_king_move: bool,
-    black_king_move: bool,
-    white_castled: bool,
-    black_castled: bool,
+    pub squares: [[Option<Piece>; 8]; 8], // encoded as Option<Piece<NonZeroU8>> which is u8 with 0 representing None, Rust is cool
+    pub white_king_move: bool,
+    pub black_king_move: bool,
+    pub white_castled: bool,
+    pub black_castled: bool,
+    pub last_move: Option<Move>, // used for detecting e.g. en passant
 }
 
 impl Board {
-    pub fn piece_at(&self, coord: Coord) -> &Option<Piece> {
+    pub fn piece_at(&self, coord: Vector) -> &Option<Piece> {
+        assert!(coord.is_on_board()); // TODO: only run in debug
+
         &self.squares[coord.1 as usize][coord.0 as usize]
     }
 
-    pub fn piece_at_mut(&mut self, coord: Coord) -> &mut Option<Piece> {
+    pub fn piece_at_mut(&mut self, coord: Vector) -> &mut Option<Piece> {
+        assert!(coord.is_on_board()); // TODO: only run in debug
+
         &mut self.squares[coord.1 as usize][coord.0 as usize]
     }
+
+    pub fn coords(&self) -> impl Iterator<Item=Vector> {
+        (0..BOARD_SIZE_Y).flat_map(|y| (0..BOARD_SIZE_X).map(move |x| Vector(x,y)))
+    }
+
+    pub fn coords_with_piece(&self) -> impl Iterator<Item=Vector> + use<'_> {
+        self.coords().filter(|c| self.piece_at(*c).is_some())
+    }
+
+    pub fn coords_with_piece_of_color(&self, color: Color) -> impl Iterator<Item=Vector> + use<'_> {
+        self.coords().filter(move |c| if let Some(piece) = self.piece_at(*c) { piece.color() == color } else { false } )
+    }
+
 }
 
 impl Default for Board {
@@ -157,6 +178,7 @@ impl Default for Board {
             black_king_move: false,
             white_castled: false,
             black_castled: false,
+            last_move: None,
         }
     }
 }

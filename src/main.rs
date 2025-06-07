@@ -1,10 +1,16 @@
-use crate::chess::board::Board;
-
+use crate::chess::{board::{Board, Color}, r#move};
+use rand::prelude::*;
 
 mod chess;
 
 fn main() {
-    let board = Board::default();
+    let mut board = Board::default();
+
+    let moves = board.generate_moves(Color::White);
+    println!("{} moves found", moves.len());
+
+    board.execute_move(*moves.choose(&mut rand::rng()).unwrap());
+
 
     println!("{}", board);
 }
