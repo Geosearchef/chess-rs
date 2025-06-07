@@ -1,4 +1,4 @@
-use crate::chess::{board::{Board, Color}, r#move};
+use crate::chess::board::{Board, Color};
 use rand::prelude::*;
 
 mod chess;

@@ -1,6 +1,6 @@
 use std::vec;
 
-use crate::chess::{board::{Board, Color, Piece}, r#move, vector::Vector};
+use crate::chess::{board::{Board, Color, Piece}, vector::Vector};
 use crate::chess::board::PieceType::*;
 use crate::chess::board::Color::*;
 
@@ -120,7 +120,7 @@ impl Board {
 
         let dsts = offsets.into_iter().map(|off| coord + off);
 
-        for dst in dsts {
+        for dst in dsts { // TODO: this is shared with the king: can I go there?
             if !dst.is_on_board() {
                 continue;
             }
@@ -173,7 +173,7 @@ impl Board {
             Vector( 1,  0),
         ];
 
-        for offset in offsets { // TODO same code as for bishop
+        for offset in offsets { // TODO same code as for bishop: follow offset as long as possible
             let mut dst = coord + offset;
             while dst.is_on_board() {
                 if let Some(victim) = self.piece_at(dst) {
@@ -191,9 +191,69 @@ impl Board {
         moves
     }
     pub fn generate_queen_moves(&self, coord: Vector, piece: Piece) -> Vec<Move> {
-        vec![]
+        let mut moves = vec![];
+        
+        moves.append(&mut self.generate_bishop_moves(coord, piece));
+        moves.append(&mut self.generate_rook_moves(coord, piece));
+
+        moves
     }
     pub fn generate_king_moves(&self, coord: Vector, piece: Piece) -> Vec<Move> {
-        vec![]
+        let mut moves = vec![];
+
+        let offsets = [
+            Vector( 0,  1),
+            Vector( 1,  1),
+            Vector( 1,  0),
+            Vector( 1, -1),
+            Vector( 0, -1),
+            Vector(-1, -1),
+            Vector(-1,  0),
+            Vector(-1,  1),
+        ];
+
+        let dsts = offsets.into_iter().map(|off| coord + off);
+
+        for dst in dsts { // TODO: this is shared with the king: can I go there?
+            if !dst.is_on_board() {
+                continue;
+            }
+
+            if let Some(victim) = self.piece_at(dst) {
+                if victim.color() != piece.color() {
+                    moves.push(Move { src: coord, dst, kind: MoveKind::Capture });
+                }
+            } else {
+                moves.push(Move { src: coord, dst, kind: MoveKind::Quiet });
+            }
+        }
+
+        // Castling - TODO: missing check for blocking checks
+        if !self.castled(piece.color()) {
+            let y: i8 = if piece.color() == White { 7 } else { 0 };
+
+            // Castle left (queen side)
+            if let (Some(king_piece), Some(rook_piece)) = (self.piece_at(Vector(4, y)), self.piece_at(Vector(0, y))) {
+                let our_king = king_piece.piece_type() == King && king_piece.color() == piece.color();
+                let our_rook = rook_piece.piece_type() == Rook && rook_piece.color() == piece.color();
+                let empty_between = self.piece_at(Vector(1, y)).is_none() && self.piece_at(Vector(2, y)).is_none() && self.piece_at(Vector(3, y)).is_none(); // TODO: no checks on these squares
+                if our_king && our_rook && empty_between {
+                    moves.push(Move { src: coord, dst: Vector(2, 7), kind: MoveKind::QueenCastle });
+                }
+            }
+
+            // Castle right (king side)
+            if let (Some(king_piece), Some(rook_piece)) = (self.piece_at(Vector(4, y)), self.piece_at(Vector(7, y))) {
+                let our_king = king_piece.piece_type() == King && king_piece.color() == piece.color();
+                let our_rook = rook_piece.piece_type() == Rook && rook_piece.color() == piece.color();
+                let empty_between = self.piece_at(Vector(5, y)).is_none() && self.piece_at(Vector(6, y)).is_none(); // TODO: no checks on these squares
+                if our_king && our_rook && empty_between {
+                    moves.push(Move { src: coord, dst: Vector(6, 7), kind: MoveKind::KingCastle });
+                }
+            }
+
+        }
+
+        moves
     }
 }

@@ -8,6 +8,7 @@ pub const BOARD_SIZE_Y: i8 = 8;
 
 const PIECE_TYPE_MASK: u8 = 0b0000_0111;
 const PIECE_COLOR_MASK: u8 = 0b0000_1000;
+const PIECE_MOVED_MASK: u8 = 0b0001_0000;
 
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -106,6 +107,16 @@ impl Piece {
     pub fn is_king(&self) -> bool {
         self.piece_type() == PieceType::King
     }
+
+    pub fn moved(&self) -> bool {
+        (self.0.get() & PIECE_MOVED_MASK) != 0
+    }
+
+    pub fn set_moved(&mut self) {
+        unsafe {
+            self.0 = NonZeroU8::new_unchecked(self.0.get() | PIECE_MOVED_MASK);
+        }
+    }
 }
 
 
@@ -144,6 +155,13 @@ impl Board {
 
     pub fn coords_with_piece_of_color(&self, color: Color) -> impl Iterator<Item=Vector> + use<'_> {
         self.coords().filter(move |c| if let Some(piece) = self.piece_at(*c) { piece.color() == color } else { false } )
+    }
+
+    pub fn castled(&self, color: Color) -> bool {
+        match color {
+            Color::White => self.white_castled,
+            Color::Black => self.black_castled,
+        }
     }
 
 }
