@@ -1,4 +1,6 @@
-use crate::chess::{board::{Board, Color, Piece}, vector::Vector};
+use std::vec;
+
+use crate::chess::{board::{Board, Color, Piece}, r#move, vector::Vector};
 use crate::chess::board::PieceType::*;
 use crate::chess::board::Color::*;
 
@@ -135,10 +137,58 @@ impl Board {
         moves
     }
     pub fn generate_bishop_moves(&self, coord: Vector, piece: Piece) -> Vec<Move> {
-        vec![]
+        let mut moves = vec![];
+
+        let offsets = [
+            Vector(-1, -1),
+            Vector( 1, -1),
+            Vector(-1,  1),
+            Vector( 1,  1),
+        ];
+
+        for offset in offsets {
+            let mut dst = coord + offset;
+            while dst.is_on_board() {
+                if let Some(victim) = self.piece_at(dst) {
+                    if victim.color() != piece.color() {
+                        moves.push(Move { src: coord, dst: dst, kind: MoveKind::Capture });
+                    }
+                    break; // can't go further
+                } else {
+                    moves.push(Move { src: coord, dst: dst, kind: MoveKind::Quiet });
+                }
+                dst = dst + offset;
+            }
+        }
+
+        moves
     }
     pub fn generate_rook_moves(&self, coord: Vector, piece: Piece) -> Vec<Move> {
-        vec![]
+        let mut moves = vec![];
+
+        let offsets = [
+            Vector( 0, -1),
+            Vector( 0,  1),
+            Vector(-1,  0),
+            Vector( 1,  0),
+        ];
+
+        for offset in offsets { // TODO same code as for bishop
+            let mut dst = coord + offset;
+            while dst.is_on_board() {
+                if let Some(victim) = self.piece_at(dst) {
+                    if victim.color() != piece.color() {
+                        moves.push(Move { src: coord, dst: dst, kind: MoveKind::Capture });
+                    }
+                    break; // can't go further
+                } else {
+                    moves.push(Move { src: coord, dst: dst, kind: MoveKind::Quiet });
+                }
+                dst = dst + offset;
+            }
+        }
+
+        moves
     }
     pub fn generate_queen_moves(&self, coord: Vector, piece: Piece) -> Vec<Move> {
         vec![]
