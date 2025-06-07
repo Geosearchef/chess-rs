@@ -40,11 +40,11 @@ impl Board {
         let piece = self.piece_at(coord).expect("Only coords with piece can be supplied");
         match piece.piece_type() {
             Pawn => self.generate_pawn_moves(coord, piece),
-            Knight => vec![],
-            Bishop => vec![],
-            Rook => vec![],
-            Queen => vec![],
-            King => vec![], // TODO:
+            Knight => self.generate_knight_moves(coord, piece),
+            Bishop => self.generate_bishop_moves(coord, piece),
+            Rook => self.generate_rook_moves(coord, piece),
+            Queen => self.generate_queen_moves(coord, piece),
+            King => self.generate_king_moves(coord, piece),
         }
     }
 
@@ -104,5 +104,46 @@ impl Board {
         }
 
         moves
+    }
+
+    pub fn generate_knight_moves(&self, coord: Vector, piece: Piece) -> Vec<Move> {
+        let mut moves = vec![];
+
+        let offsets = [
+            Vector(-2, -1), Vector(-1, -2),
+            Vector( 2, -1), Vector(-1,  2),
+            Vector(-2,  1), Vector( 1, -2),
+            Vector( 2,  1), Vector( 1,  2),
+        ];
+
+        let dsts = offsets.into_iter().map(|off| coord + off);
+
+        for dst in dsts {
+            if !dst.is_on_board() {
+                continue;
+            }
+
+            if let Some(victim) = self.piece_at(dst) {
+                if victim.color() != piece.color() {
+                    moves.push(Move { src: coord, dst, kind: MoveKind::Capture });
+                }
+            } else {
+                moves.push(Move { src: coord, dst, kind: MoveKind::Quiet });
+            }
+        }
+
+        moves
+    }
+    pub fn generate_bishop_moves(&self, coord: Vector, piece: Piece) -> Vec<Move> {
+        vec![]
+    }
+    pub fn generate_rook_moves(&self, coord: Vector, piece: Piece) -> Vec<Move> {
+        vec![]
+    }
+    pub fn generate_queen_moves(&self, coord: Vector, piece: Piece) -> Vec<Move> {
+        vec![]
+    }
+    pub fn generate_king_moves(&self, coord: Vector, piece: Piece) -> Vec<Move> {
+        vec![]
     }
 }
