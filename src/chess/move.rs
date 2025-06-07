@@ -63,7 +63,14 @@ impl Board {
         let pawn_push_coord = coord + y_offset;
 
         if pawn_push_coord.is_on_board() && self.piece_at(pawn_push_coord).is_none() {
-            moves.push(Move { src: coord, dst: pawn_push_coord, kind: MoveKind::Quiet }); // TODO: might be promote -> might be multiple -> set later?
+            if pawn_push_coord.1 == 0 || pawn_push_coord.1 == 7 {
+                moves.push(Move { src: coord, dst: pawn_push_coord, kind: MoveKind::PromotionKnight });
+                moves.push(Move { src: coord, dst: pawn_push_coord, kind: MoveKind::PromotionBishop });
+                moves.push(Move { src: coord, dst: pawn_push_coord, kind: MoveKind::PromotionRook });
+                moves.push(Move { src: coord, dst: pawn_push_coord, kind: MoveKind::PromotionQueen });
+            } else {
+                moves.push(Move { src: coord, dst: pawn_push_coord, kind: MoveKind::Quiet });
+            }
             
             if (piece.color() == White && coord.1 == 6) || (piece.color() == Black && coord.1 == 1) {
                 let pawn_double_push_coord = coord + y_offset * 2;
@@ -84,7 +91,14 @@ impl Board {
                 };
 
                 if victim.color() != piece.color() {
-                    moves.push(Move { src: coord, dst: attack_coord, kind: MoveKind::Capture  }); // TODO: might be promote -> might be multiple -> set later?
+                    if pawn_push_coord.1 == 0 || pawn_push_coord.1 == 7 {
+                        moves.push(Move { src: coord, dst: attack_coord, kind: MoveKind::CapturePromotionKnight });
+                        moves.push(Move { src: coord, dst: attack_coord, kind: MoveKind::CapturePromotionBishop });
+                        moves.push(Move { src: coord, dst: attack_coord, kind: MoveKind::CapturePromotionRook });
+                        moves.push(Move { src: coord, dst: attack_coord, kind: MoveKind::CapturePromotionQueen });
+                    } else {
+                        moves.push(Move { src: coord, dst: attack_coord, kind: MoveKind::Capture });
+                    }
                 }
             }
         }
@@ -120,22 +134,11 @@ impl Board {
 
         let dsts = offsets.into_iter().map(|off| coord + off);
 
-        for dst in dsts { // TODO: this is shared with the king: can I go there?
-            if !dst.is_on_board() {
-                continue;
-            }
-
-            if let Some(victim) = self.piece_at(dst) {
-                if victim.color() != piece.color() {
-                    moves.push(Move { src: coord, dst, kind: MoveKind::Capture });
-                }
-            } else {
-                moves.push(Move { src: coord, dst, kind: MoveKind::Quiet });
-            }
-        }
+        moves.append(&mut self.generate_moves_to_squares(coord, piece, dsts));
 
         moves
     }
+
     pub fn generate_bishop_moves(&self, coord: Vector, piece: Piece) -> Vec<Move> {
         let mut moves = vec![];
 
@@ -146,23 +149,11 @@ impl Board {
             Vector( 1,  1),
         ];
 
-        for offset in offsets {
-            let mut dst = coord + offset;
-            while dst.is_on_board() {
-                if let Some(victim) = self.piece_at(dst) {
-                    if victim.color() != piece.color() {
-                        moves.push(Move { src: coord, dst: dst, kind: MoveKind::Capture });
-                    }
-                    break; // can't go further
-                } else {
-                    moves.push(Move { src: coord, dst: dst, kind: MoveKind::Quiet });
-                }
-                dst = dst + offset;
-            }
-        }
+        moves.append(&mut self.generate_continous_moves_from_offsets(coord, piece, offsets));
 
         moves
     }
+
     pub fn generate_rook_moves(&self, coord: Vector, piece: Piece) -> Vec<Move> {
         let mut moves = vec![];
 
@@ -173,23 +164,11 @@ impl Board {
             Vector( 1,  0),
         ];
 
-        for offset in offsets { // TODO same code as for bishop: follow offset as long as possible
-            let mut dst = coord + offset;
-            while dst.is_on_board() {
-                if let Some(victim) = self.piece_at(dst) {
-                    if victim.color() != piece.color() {
-                        moves.push(Move { src: coord, dst: dst, kind: MoveKind::Capture });
-                    }
-                    break; // can't go further
-                } else {
-                    moves.push(Move { src: coord, dst: dst, kind: MoveKind::Quiet });
-                }
-                dst = dst + offset;
-            }
-        }
+        moves.append(&mut self.generate_continous_moves_from_offsets(coord, piece, offsets));
 
         moves
     }
+
     pub fn generate_queen_moves(&self, coord: Vector, piece: Piece) -> Vec<Move> {
         let mut moves = vec![];
         
@@ -198,6 +177,7 @@ impl Board {
 
         moves
     }
+
     pub fn generate_king_moves(&self, coord: Vector, piece: Piece) -> Vec<Move> {
         let mut moves = vec![];
 
@@ -214,19 +194,7 @@ impl Board {
 
         let dsts = offsets.into_iter().map(|off| coord + off);
 
-        for dst in dsts { // TODO: this is shared with the king: can I go there?
-            if !dst.is_on_board() {
-                continue;
-            }
-
-            if let Some(victim) = self.piece_at(dst) {
-                if victim.color() != piece.color() {
-                    moves.push(Move { src: coord, dst, kind: MoveKind::Capture });
-                }
-            } else {
-                moves.push(Move { src: coord, dst, kind: MoveKind::Quiet });
-            }
-        }
+        moves.append(&mut self.generate_moves_to_squares(coord, piece, dsts));
 
         // Castling - TODO: missing check for blocking checks
         if !self.castled(piece.color()) {
@@ -252,6 +220,49 @@ impl Board {
                 }
             }
 
+        }
+
+        moves
+    }
+
+    #[inline]
+    fn generate_moves_to_squares<I>(&self, coord: Vector, piece: Piece, dsts: I) -> Vec<Move> where I: IntoIterator<Item = Vector> {
+        let mut moves = vec![];
+
+        for dst in dsts { // TODO: this is shared with the king: can I go there?
+            if !dst.is_on_board() {
+                continue;
+            }
+
+            if let Some(victim) = self.piece_at(dst) {
+                if victim.color() != piece.color() {
+                    moves.push(Move { src: coord, dst, kind: MoveKind::Capture });
+                }
+            } else {
+                moves.push(Move { src: coord, dst, kind: MoveKind::Quiet });
+            }
+        }
+
+        moves
+    }
+
+    #[inline]
+    fn generate_continous_moves_from_offsets<I>(&self, coord: Vector, piece: Piece, offsets: I) -> Vec<Move> where I: IntoIterator<Item = Vector> {
+        let mut moves = vec![];
+
+        for offset in offsets {
+            let mut dst = coord + offset;
+            while dst.is_on_board() {
+                if let Some(victim) = self.piece_at(dst) {
+                    if victim.color() != piece.color() {
+                        moves.push(Move { src: coord, dst: dst, kind: MoveKind::Capture });
+                    }
+                    break; // can't go further
+                } else {
+                    moves.push(Move { src: coord, dst: dst, kind: MoveKind::Quiet });
+                }
+                dst = dst + offset;
+            }
         }
 
         moves

@@ -6,11 +6,13 @@ mod chess;
 fn main() {
     let mut board = Board::default();
 
-    let moves = board.generate_moves(Color::White);
-    println!("{} moves found", moves.len());
+    for i in 0..20 {
+        let moves = board.generate_moves(if i % 2 == 0 { Color::White } else { Color::Black });
+        println!("{} moves found", moves.len());
 
-    board.execute_move(*moves.choose(&mut rand::rng()).unwrap());
+        board.execute_move(*moves.choose(&mut rand::rng()).unwrap());
 
 
-    println!("{}", board);
+        println!("{}\n\n", board);
+    }
 }

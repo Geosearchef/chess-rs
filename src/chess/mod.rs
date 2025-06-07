@@ -1,4 +1,5 @@
-use crate::chess::{board::Board, r#move::{Move, MoveKind}, vector::Vector};
+use crate::chess::{board::{Board, Piece}, r#move::{Move, MoveKind}, vector::Vector};
+use crate::chess::board::PieceType::*;
 
 #[allow(dead_code)]
 pub mod board;
@@ -27,7 +28,7 @@ impl Board {
         // TODO: update zobrist hash
         // src
         // dst
-        // dst piece (detectable from move.kind == Capture)
+        // dst piece (detectable from move.kind == Capture / EPCapture / CapturePromote)
 
         // Castling - not recorded as last move, as the king move encodes all information
         if r#move.kind == MoveKind::QueenCastle {
@@ -42,6 +43,26 @@ impl Board {
             *self.piece_at_mut(captured_coord) = None;
 
             // TODO: zobrist
+        }
+
+        // Promotion
+        let promote_to = match r#move.kind {
+            MoveKind::PromotionKnight => Some(Knight),
+            MoveKind::PromotionBishop => Some(Bishop),
+            MoveKind::PromotionRook => Some(Rook),
+            MoveKind::PromotionQueen => Some(Queen),
+            MoveKind::CapturePromotionKnight => Some(Knight),
+            MoveKind::CapturePromotionBishop => Some(Bishop),
+            MoveKind::CapturePromotionRook => Some(Rook),
+            MoveKind::CapturePromotionQueen => Some(Queen),
+            _ => None,
+        };
+        if let Some(new_piece_type) = promote_to {
+            let mut new_piece = Piece::new(piece.color(), new_piece_type);
+            new_piece.set_moved();
+            *self.piece_at_mut(r#move.dst) = Some(new_piece);
+
+            // TODO: zobrist: remove old, add new
         }
 
         self.last_move = Some(r#move);
