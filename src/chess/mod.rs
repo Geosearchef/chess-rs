@@ -8,6 +8,7 @@ pub mod r#move;
 #[allow(dead_code)]
 pub mod vector;
 
+pub mod visualizer;
 
 
 impl Board {
