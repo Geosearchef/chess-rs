@@ -64,10 +64,9 @@ impl Board {
 
         if pawn_push_coord.is_on_board() && self.piece_at(pawn_push_coord).is_none() {
             if pawn_push_coord.1 == 0 || pawn_push_coord.1 == 7 {
-                moves.push(Move { src: coord, dst: pawn_push_coord, kind: MoveKind::PromotionKnight });
-                moves.push(Move { src: coord, dst: pawn_push_coord, kind: MoveKind::PromotionBishop });
-                moves.push(Move { src: coord, dst: pawn_push_coord, kind: MoveKind::PromotionRook });
-                moves.push(Move { src: coord, dst: pawn_push_coord, kind: MoveKind::PromotionQueen });
+                for kind in [MoveKind::PromotionKnight, MoveKind::PromotionBishop, MoveKind::PromotionRook, MoveKind::PromotionQueen] {
+                    moves.push(Move { src: coord, dst: pawn_push_coord, kind })
+                }
             } else {
                 moves.push(Move { src: coord, dst: pawn_push_coord, kind: MoveKind::Quiet });
             }
@@ -81,8 +80,9 @@ impl Board {
         }
 
         // Attack
-        let x_offsets = [Vector(0, -1), Vector(0, 1)];
-        let attack_coords = x_offsets.map(|off| coord + off);
+        let x_offsets = [Vector(-1, 0), Vector(1, 0)];
+        let offsets = x_offsets.map(|off| off + y_offset);
+        let attack_coords = offsets.map(|off| coord + off);
 
         for attack_coord in attack_coords {
             if attack_coord.is_on_board() {
@@ -92,10 +92,9 @@ impl Board {
 
                 if victim.color() != piece.color() {
                     if pawn_push_coord.1 == 0 || pawn_push_coord.1 == 7 {
-                        moves.push(Move { src: coord, dst: attack_coord, kind: MoveKind::CapturePromotionKnight });
-                        moves.push(Move { src: coord, dst: attack_coord, kind: MoveKind::CapturePromotionBishop });
-                        moves.push(Move { src: coord, dst: attack_coord, kind: MoveKind::CapturePromotionRook });
-                        moves.push(Move { src: coord, dst: attack_coord, kind: MoveKind::CapturePromotionQueen });
+                        for kind in [MoveKind::CapturePromotionKnight, MoveKind::CapturePromotionBishop, MoveKind::CapturePromotionRook, MoveKind::CapturePromotionQueen] {
+                            moves.push(Move { src: coord, dst: attack_coord, kind })
+                        }
                     } else {
                         moves.push(Move { src: coord, dst: attack_coord, kind: MoveKind::Capture });
                     }
@@ -113,7 +112,7 @@ impl Board {
                     };
 
                     if victim.color() != piece.color() && last_move_dst == attacked_piece_coord {
-                        moves.push(Move { src: coord, dst: attack_coord, kind: MoveKind::Capture  }); // TODO: might be promote -> might be multiple -> set later?
+                        moves.push(Move { src: coord, dst: attack_coord, kind: MoveKind::EPCapture });
                     }
                 }
             }
@@ -206,7 +205,7 @@ impl Board {
                 let our_rook = rook_piece.piece_type() == Rook && rook_piece.color() == piece.color();
                 let empty_between = self.piece_at(Vector(1, y)).is_none() && self.piece_at(Vector(2, y)).is_none() && self.piece_at(Vector(3, y)).is_none(); // TODO: no checks on these squares
                 if our_king && our_rook && empty_between {
-                    moves.push(Move { src: coord, dst: Vector(2, 7), kind: MoveKind::QueenCastle });
+                    moves.push(Move { src: coord, dst: Vector(2, y), kind: MoveKind::QueenCastle });
                 }
             }
 
@@ -216,7 +215,7 @@ impl Board {
                 let our_rook = rook_piece.piece_type() == Rook && rook_piece.color() == piece.color();
                 let empty_between = self.piece_at(Vector(5, y)).is_none() && self.piece_at(Vector(6, y)).is_none(); // TODO: no checks on these squares
                 if our_king && our_rook && empty_between {
-                    moves.push(Move { src: coord, dst: Vector(6, 7), kind: MoveKind::KingCastle });
+                    moves.push(Move { src: coord, dst: Vector(6, y), kind: MoveKind::KingCastle });
                 }
             }
 

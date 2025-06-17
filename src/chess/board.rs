@@ -11,7 +11,7 @@ const PIECE_COLOR_MASK: u8 = 0b0000_1000;
 const PIECE_MOVED_MASK: u8 = 0b0001_0000;
 
 #[repr(u8)]
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Color {
     White = PIECE_COLOR_MASK * 0,
     Black = PIECE_COLOR_MASK * 1,
@@ -23,6 +23,15 @@ impl From<u8> for Color {
             0 => Self::White,
             PIECE_COLOR_MASK => Self::Black,
             _ => unreachable!()
+        }
+    }
+}
+
+impl Color {
+    pub fn other(&self) -> Color {
+        match self {
+            Self::White => Self::Black,
+            Self::Black => Self::White,
         }
     }
 }
@@ -130,6 +139,7 @@ pub struct Board {
     pub white_castled: bool,
     pub black_castled: bool,
     pub last_move: Option<Move>, // used for detecting e.g. en passant
+    pub next_player: Color
 }
 
 impl Board {
@@ -197,6 +207,7 @@ impl Default for Board {
             white_castled: false,
             black_castled: false,
             last_move: None,
+            next_player: White,
         }
     }
 }

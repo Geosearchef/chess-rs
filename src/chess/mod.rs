@@ -42,6 +42,7 @@ impl Board {
         if r#move.kind == MoveKind::EPCapture {
             let captured_coord = r#move.dst + if r#move.dst.1 == 5 { Vector(0, -1) } else { Vector(0, 1) };
             *self.piece_at_mut(captured_coord) = None;
+            // TODO: doesn't work
 
             // TODO: zobrist
         }
@@ -67,6 +68,9 @@ impl Board {
         }
 
         self.last_move = Some(r#move);
+
+        debug_assert_eq!(piece.color(), self.next_player); // assert that the move was executed by the current player
+        self.next_player = self.next_player.other();
     }
 
     #[inline]
