@@ -1,3 +1,4 @@
+use std::io::Write;
 use crate::chess::board::{Board, Piece, PieceType};
 use crate::chess::r#move::Move;
 use crate::chess::vector::Vector;
@@ -111,8 +112,10 @@ impl ChessVisualizer {
         let clicked_square = Self::to_board_space(pos);
 
         if let Some(selected_square) = self.selected_square {
-            if let Some(r#move) = self.possible_moves.iter().filter(|m| m.dst == clicked_square).last() { // TODO: always convert to queen
+            if let Some(r#move) = self.possible_moves.iter().filter(|m| m.dst == clicked_square).last() {
                 self.board.execute_move(r#move.clone());
+
+                println!("Evaluation: {:.2}", self.board.evaluate_position());
             }
 
 

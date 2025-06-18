@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::io::Write;
 use crate::chess::{board::{Board, Color}, visualizer::ChessVisualizer};
 use egui::{Style, Visuals};
 use eyre::{eyre, Context};

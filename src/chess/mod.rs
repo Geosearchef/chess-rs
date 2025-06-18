@@ -7,6 +7,8 @@ pub mod board;
 pub mod r#move;
 #[allow(dead_code)]
 pub mod vector;
+#[allow(dead_code)]
+pub mod evaluation;
 
 pub mod visualizer;
 
