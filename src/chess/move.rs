@@ -31,6 +31,19 @@ pub enum MoveKind {
     CapturePromotionQueen,
 }
 
+impl MoveKind {
+    fn is_capture_with_target(&self) -> bool {
+        match self {
+            MoveKind::Capture => true,
+            MoveKind::CapturePromotionKnight => true,
+            MoveKind::CapturePromotionBishop => true,
+            MoveKind::CapturePromotionRook => true,
+            MoveKind::CapturePromotionQueen => true,
+            _ => false
+        }
+    }
+}
+
 impl Board {
     pub fn generate_moves(&self, player: Color) -> Vec<Move> { // TODO: check for legal, this is just pseudo legal
         self.coords_with_piece_of_color(player)
@@ -265,5 +278,21 @@ impl Board {
         }
 
         moves
+    }
+}
+
+impl Move {
+    #[inline]
+    pub fn is_capture_king(&self, board: &Board) -> bool {
+        if !self.is_capture_with_target() {
+            return false;
+        }
+
+        board.piece_at(self.dst).unwrap().is_king() // This move is marked as capture, there should be a piece at dst
+    }
+
+    #[inline]
+    pub fn is_capture_with_target(&self) -> bool {
+        self.kind.is_capture_with_target()
     }
 }

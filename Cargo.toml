@@ -11,3 +11,6 @@ egui_extras = { version = "0.31.1", features = ["image", "all_loaders"] }
 eyre = "0.6.12"
 itertools = "0.14.0"
 rand = "0.9.1"
+
+[profile.dev]
+opt-level = 3 # TODO: temporary fix for release not printing to stdout

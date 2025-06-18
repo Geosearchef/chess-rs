@@ -21,6 +21,7 @@ impl Board {
 
         evaluation += self.evaluate_material();
         evaluation += self.evaluate_mobility(&white_moves, &black_moves);
+        evaluation += self.evaluate_castle();
 
         evaluation
     }
@@ -39,7 +40,20 @@ impl Board {
     }
 
     fn evaluate_mobility(&self, white_moves: &Vec<Move>, black_moves: &Vec<Move>) -> f64 {
-        (white_moves.len() - black_moves.len()) as f64 * 0.1
+        (white_moves.len() as f64 - black_moves.len() as f64) * 0.1
+    }
+
+    fn evaluate_castle(&self) -> f64 {
+        let mut evaluation = 0.0;
+
+        if self.white_castled {
+            evaluation += 0.7;
+        }
+        if self.black_castled {
+            evaluation -= 0.7;
+        }
+
+        evaluation
     }
 
     // fn evaluate_check(&self, white_moves: &Vec<Move>, black_moves: &Vec<Move>) -> f64 { // could check if king -> return 200, but: very expensive

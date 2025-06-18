@@ -1,15 +1,18 @@
 use std::io::Write;
+use std::time::Instant;
 use crate::chess::board::{Board, Piece, PieceType};
 use crate::chess::r#move::Move;
 use crate::chess::vector::Vector;
 use egui::load::TexturePoll;
-use egui::{pos2, vec2, Color32, Frame, PointerButton, Pos2, Rect, Shape, StrokeKind, TextureOptions, Vec2};
+use egui::{pos2, vec2, Color32, Frame, Key, PointerButton, Pos2, Rect, Shape, StrokeKind, TextureOptions, Vec2};
+use crate::chess::negamax::negamax_move;
 
 const LIGHT_SQUARE_COLOR: Color32 = Color32::from_rgb(240, 217, 181);
 const DARK_SQUARE_COLOR: Color32 = Color32::from_rgb(181, 136, 99);
-const SELECTION_COLOR: Color32 = Color32::from_rgb(118, 150, 72);
+const SELECTION_COLOR: Color32 = Color32::from_rgb(50, 150, 168);
 const POSSIBLE_MOVE_COLOR: Color32 = Color32::from_rgb(209, 176, 56);
 const LAST_MOVE_COLOR: Color32 = Color32::from_rgb(90, 90, 90);
+const SUGGESTED_MOVE_COLOR: Color32 = Color32::from_rgb(118, 150, 72);
 
 const SQUARE_SIZE: Vec2 = vec2(50.0, 50.0);
 const RECT_UV_ALL: Rect = Rect { min: pos2(0.0, 0.0), max: pos2(1.0, 1.0) };
@@ -17,19 +20,25 @@ const RECT_UV_ALL: Rect = Rect { min: pos2(0.0, 0.0), max: pos2(1.0, 1.0) };
 const PIECE_IMAGES_PATH: &str = "file://./assets/pieces/";
 
 pub struct ChessVisualizer {
+    auto_move_enabled: bool,
     board: Board,
     move_index: u64,
     selected_square: Option<Vector>,
     possible_moves: Vec<Move>,
+    suggested_move: Option<Move>,
+    auto_move: DoubleTrigger
 }
 
 impl Default for ChessVisualizer {
     fn default() -> Self {
         Self {
+            auto_move_enabled: true,
             board: Board::default(),
             move_index: 0,
             selected_square: None,
             possible_moves: vec![],
+            suggested_move: None,
+            auto_move: DoubleTrigger::default()
         }
     }
 }
@@ -39,9 +48,6 @@ impl eframe::App for ChessVisualizer {
         egui::CentralPanel::default()
             .frame(Frame::NONE)
             .show(ctx, |ui| {
-
-                // TODO: clone -> cache?
-                // let piece_textures = self.piece_images.clone().map(|img| ctx.load_texture("texture", img, TextureOptions::LINEAR));
 
                 // ui.heading("Hello World");
                 // ui.label("hi there");
@@ -84,24 +90,49 @@ impl eframe::App for ChessVisualizer {
                     painter.add(Shape::rect_stroke(Rect::from_min_size(dst_pos, SQUARE_SIZE), 0.0, (3.0, LAST_MOVE_COLOR), StrokeKind::Inside));
                 }
 
-                // Paint selection
-                if let Some(selected_square) = self.selected_square {
-                    let pos = Self::to_screen_space(selected_square);
-                    painter.add(Shape::rect_stroke(Rect::from_min_size(pos, SQUARE_SIZE), 0.0, (3.0, SELECTION_COLOR), StrokeKind::Inside));
-                }
-
                 // Paint possible moves
                 for Move { dst, .. } in self.possible_moves.iter() {
                     let pos = Self::to_screen_space(*dst);
                     painter.add(Shape::rect_stroke(Rect::from_min_size(pos, SQUARE_SIZE), 0.0, (3.0, POSSIBLE_MOVE_COLOR), StrokeKind::Inside));
                 }
 
+                // Paint suggestion
+                if let Some(Move { src, dst, .. }) = self.suggested_move {
+                    let src_pos = Self::to_screen_space(src);
+                    let dst_pos = Self::to_screen_space(dst);
+                    painter.add(Shape::rect_stroke(Rect::from_min_size(src_pos, SQUARE_SIZE), 0.0, (3.0, SUGGESTED_MOVE_COLOR), StrokeKind::Inside));
+                    painter.add(Shape::rect_stroke(Rect::from_min_size(dst_pos, SQUARE_SIZE), 0.0, (3.0, SUGGESTED_MOVE_COLOR), StrokeKind::Inside));
+                }
+
+                // Paint selection
+                if let Some(selected_square) = self.selected_square {
+                    let pos = Self::to_screen_space(selected_square);
+                    painter.add(Shape::rect_stroke(Rect::from_min_size(pos, SQUARE_SIZE), 0.0, (3.0, SELECTION_COLOR), StrokeKind::Inside));
+                }
+
+
+                // Auto move
+                if self.auto_move.enabled() {
+                    if self.auto_move.double_and_check() {
+                        self.compute_suggestion();
+                        self.execute_suggested_move();
+                    }
+
+                    ctx.request_repaint();
+                }
+
 
                 // Handle input
-
                 if response.clicked_by(PointerButton::Primary) {
                     self.board_left_clicked(response.interact_pointer_pos().expect("was just clicked"));
                     ctx.request_repaint();
+                }
+
+                if ctx.input(|i| i.key_pressed(Key::Space)) {
+                    self.compute_suggestion();
+                }
+                if ctx.input(|i| i.key_pressed(Key::Enter)) {
+                    self.execute_suggested_move();
                 }
         });
     }
@@ -116,6 +147,12 @@ impl ChessVisualizer {
                 self.board.execute_move(r#move.clone());
 
                 println!("Evaluation: {:.2}", self.board.evaluate_position());
+
+                self.suggested_move = None;
+
+                if self.auto_move_enabled {
+                    self.auto_move.initiate();
+                }
             }
 
 
@@ -129,6 +166,26 @@ impl ChessVisualizer {
                     self.possible_moves = self.board.generate_piece_moves(clicked_square);
                 }
             }
+        }
+    }
+
+    fn compute_suggestion(&mut self) {
+        let start = Instant::now();
+        if let Some((suggested_move, score)) = negamax_move(self.board.clone(), 4) {
+            self.suggested_move = Some(suggested_move);
+            println!("Suggested move score: {:.2}, took {:.1} ms", score, start.elapsed().as_millis());
+        } else {
+            self.suggested_move = None;
+            println!("No possible move found");
+        }
+    }
+
+    fn execute_suggested_move(&mut self) {
+        if let Some(suggested_move) = self.suggested_move {
+            self.board.execute_move(suggested_move); // why can I pass ownership of the move if &mut self is used below?
+            self.suggested_move = None;
+        } else {
+            println!("No move being suggested");
         }
     }
 }
@@ -161,10 +218,29 @@ impl ChessVisualizer {
 }
 
 
-
-
-// - checkerboard
-// - pieces
-// - selected
-// - last move
-// - possible moves
+/// Double trigger to delay actions until after two renders
+///
+/// To return true on `double_and_check`, the functions initaite->double_and_check->double_and_check need to be called.
+#[derive(Default)]
+struct DoubleTrigger {
+    count: u8
+}
+impl DoubleTrigger {
+    fn initiate(&mut self) {
+        self.count = 1;
+    }
+    fn double_and_check(&mut self) -> bool {
+        if self.count == 1 || self.count == 2 {
+            self.count += 1;
+            false
+        } else if self.count == 3 {
+            self.count = 0;
+            true
+        } else {
+            false
+        }
+    }
+    fn enabled(&self) -> bool {
+        self.count > 0
+    }
+}

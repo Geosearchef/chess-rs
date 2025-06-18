@@ -40,7 +40,7 @@ fn main() -> Result<()> {
 
             egui_extras::install_image_loaders(&cc.egui_ctx);
 
-            Ok(Box::<ChessVisualizer>::default())
+            Ok(Box::<ChessVisualizer>::default()) // TODO: expose auto move and side as CLI params
         }),
     ).map_err(|e| eyre!("{:?}", e))
 }

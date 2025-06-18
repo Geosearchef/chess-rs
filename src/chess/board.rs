@@ -132,6 +132,7 @@ impl Piece {
 
 type BoardIndex = u8;
 
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Board {
     pub squares: [[Option<Piece>; 8]; 8], // encoded as Option<Piece<NonZeroU8>> which is u8 with 0 representing None, Rust is cool
     pub white_king_move: bool,

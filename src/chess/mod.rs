@@ -11,7 +11,7 @@ pub mod vector;
 pub mod evaluation;
 
 pub mod visualizer;
-
+mod negamax;
 
 impl Board {
     pub fn execute_move(&mut self, r#move: Move) {
