@@ -41,6 +41,13 @@ impl Color {
             Self::Black => 1,
         }
     }
+
+    pub fn value_multiplier(&self) -> f64 {
+        match self {
+            Color::White => 1.0,
+            Color::Black => -1.0,
+        }
+    }
 }
 
 #[repr(u8)]

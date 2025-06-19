@@ -5,7 +5,7 @@ use crate::chess::r#move::Move;
 use crate::chess::vector::Vector;
 use egui::load::TexturePoll;
 use egui::{pos2, vec2, Color32, Frame, Key, PointerButton, Pos2, Rect, Shape, StrokeKind, TextureOptions, Vec2};
-use crate::chess::negamax::negamax_move;
+use crate::chess::negamax::{negamax_move, OptimizationContext};
 use crate::chess::zobrist::ZobristTable;
 
 const LIGHT_SQUARE_COLOR: Color32 = Color32::from_rgb(240, 217, 181);
@@ -174,7 +174,7 @@ impl ChessVisualizer {
 
     fn compute_suggestion(&mut self) {
         let start = Instant::now();
-        if let Some((suggested_move, score)) = negamax_move(self.board.clone(), 4) {
+        if let Some((suggested_move, score)) = negamax_move(self.board.clone(), 5, &self.zobrist_table) {
             self.suggested_move = Some(suggested_move);
             println!("Suggested move score: {:.2}, took {:.1} ms\n", score, start.elapsed().as_millis());
         } else {

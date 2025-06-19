@@ -13,6 +13,7 @@ hashbrown = "0.15.4"
 itertools = "0.14.0"
 rand = "0.9.0"
 rand_chacha = "0.9.0"
+rayon = "1.10.0"
 
 [profile.dev]
 opt-level = 3 # TODO: temporary fix for release not printing to stdout

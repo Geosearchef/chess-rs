@@ -4,30 +4,32 @@ use crate::chess::r#move::Move;
 use crate::chess::transposition::TranspositionTable;
 use crate::chess::zobrist::ZobristTable;
 
-#[derive(Default, Clone)]
-struct OptimizationContext {
-    zobrist_table: ZobristTable,
-    transposition_table: TranspositionTable,
-} // persists with depth information
+use rayon::prelude::*;
 
-pub fn negamax_move(board: Board, depth: u8) -> Option<(Move, f64)> {
-    let mut ctx = OptimizationContext::default();
+#[derive(Default, Clone)]
+pub struct OptimizationContext {
+    pub transposition_table: TranspositionTable,
+}
+
+pub fn negamax_move(board: Board, depth: u8, zobrist_table: &ZobristTable) -> Option<(Move, f64)> {
+    // TODO: shared doesn't seem to help
 
     let moves = board.generate_moves(board.next_player);
 
-    let scores_by_move: Vec<(Move, f64)> = moves.into_iter().map(|r#move| {
-        let mut updated_board = board.clone();
-        updated_board.execute_move(r#move, &ctx.zobrist_table);
+    let scores_by_move: Vec<(Move, f64)> = moves.into_par_iter().map(|r#move| {
+        let mut ctx = OptimizationContext::default(); // TODO: trans_table could be shared per thread, zobrist could be shared with everyone
 
-        (r#move, -negamax(updated_board, depth - 1, &mut ctx)) // clone context for parallel or use Arc<Mutex<_>>
+        let mut updated_board = board.clone();
+        updated_board.execute_move(r#move, zobrist_table);
+
+        (r#move, -negamax(updated_board, depth - 1, zobrist_table, &mut ctx)) // clone context for parallel or use Arc<Mutex<_>>
     }).collect();
 
-    println!("{}", ctx.transposition_table);
-
+    // TODO: if scores are equal, do eval and take the earlier, better move
     scores_by_move.into_iter().max_by(|l, r| l.1.partial_cmp(&r.1).unwrap())
 }
 
-fn negamax(board: Board, depth: u8, ctx: &mut OptimizationContext) -> f64 {
+fn negamax(board: Board, depth: u8, zobrist_table: &ZobristTable, ctx: &mut OptimizationContext) -> f64 {
     // Lookup transposition table
     if let Some(score) = ctx.transposition_table.lookup(board.zobrist_hash, depth) {
         return *score;
@@ -50,11 +52,12 @@ fn negamax(board: Board, depth: u8, ctx: &mut OptimizationContext) -> f64 {
         }
 
         let mut updated_board = board.clone(); // TODO: get mutable board, make move, unmake move
-        updated_board.execute_move(r#move, &ctx.zobrist_table);
+        updated_board.execute_move(r#move, zobrist_table);
 
-        -negamax(updated_board, depth - 1, ctx)
+        -negamax(updated_board, depth - 1, zobrist_table, ctx)
     });
 
+    // TODO: if scores are equal, do eval and take the earlier, better move
     let score = scores.max_by(|l, r| l.partial_cmp(&r).unwrap()).unwrap_or(0.0); // draw evaluates to 0, but this would ignore king taken!!! -> abort early / take into account
 
     ctx.transposition_table.insert(board.zobrist_hash, depth, score);

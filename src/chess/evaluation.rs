@@ -1,6 +1,13 @@
 use crate::chess::board::{Board, Piece, PieceType};
 use crate::chess::board::Color::{Black, White};
 use crate::chess::r#move::Move;
+use crate::chess::vector::Vector;
+
+const MATERIAL_WEIGHT: f64 = 1.0;
+const MOBILITY_WEIGHT: f64 = 0.1;
+const CENTER_WEIGHT: f64 = 0.6;
+const CENTER_PUSHED_WEIGHT: f64 = 0.2;
+const CAPTURE_POTENTIAL_WEIGHT: f64 = 0.25;
 
 impl Board {
     pub fn evaluate_position_for_current_player(&self) -> f64 {
@@ -21,6 +28,9 @@ impl Board {
 
         evaluation += self.evaluate_material();
         evaluation += self.evaluate_mobility(&white_moves, &black_moves);
+        evaluation += self.evaluate_center();
+        evaluation += self.evaluate_center_pushed();
+        // evaluation += self.evaluate_capture_potential(&white_moves, &black_moves); // TODO: benchmark these
         // evaluation += self.evaluate_castle();
 
         evaluation
@@ -36,12 +46,66 @@ impl Board {
                         0.0
                     }
                 })
-            ).sum()
+            ).sum::<f64>() * MATERIAL_WEIGHT
     }
 
     fn evaluate_mobility(&self, white_moves: &Vec<Move>, black_moves: &Vec<Move>) -> f64 {
-        (white_moves.len() as f64 - black_moves.len() as f64) * 0.1
+        (white_moves.len() as f64 - black_moves.len() as f64) * MOBILITY_WEIGHT
     }
+
+    fn evaluate_center(&self) -> f64 {
+        let mut evaluation = 0.0;
+
+        for y in 3..=4 {
+            for x in 3..=4 {
+                if let Some(piece) = self.piece_at(Vector(x, y)) {
+                    if piece.is_pawn() {
+                        evaluation += CENTER_WEIGHT * piece.color().value_multiplier();
+                    }
+                }
+            }
+        }
+
+        evaluation
+    }
+
+    fn evaluate_center_pushed(&self) -> f64 {
+        let mut evaluation = 0.0;
+
+        for x in 3..=4 {
+            if let Some(piece) = self.piece_at(Vector(x, 6)) {
+                if piece.is_pawn() && piece.is_white() {
+                    evaluation -= CENTER_PUSHED_WEIGHT;
+                }
+            }
+        }
+        for x in 3..=4 {
+            if let Some(piece) = self.piece_at(Vector(x, 1)) {
+                if piece.is_pawn() && piece.is_black() {
+                    evaluation += CENTER_PUSHED_WEIGHT;
+                }
+            }
+        }
+
+        evaluation
+    }
+
+
+    fn evaluate_capture_potential(&self, white_moves: &Vec<Move>, black_moves: &Vec<Move>) -> f64 {
+        let white_capture_potential: f64 = white_moves.iter()
+            .filter(|r#move| r#move.is_capture_with_target() && !r#move.is_capture_king(self))
+            .map(|r#move| self.piece_at(r#move.dst).unwrap().piece_value())
+            .sum();
+
+        let black_capture_potential: f64 = black_moves.iter()
+            .filter(|r#move| r#move.is_capture_with_target() && !r#move.is_capture_king(self))
+            .map(|r#move| self.piece_at(r#move.dst).unwrap().piece_value())
+            .sum();
+
+        (white_capture_potential - black_capture_potential) * CAPTURE_POTENTIAL_WEIGHT
+    }
+
+    // castled, or not moved
 
     // fn evaluate_castle(&self) -> f64 {
     //     let mut evaluation = 0.0;
@@ -61,7 +125,6 @@ impl Board {
     // }
 
     // TODO: doubled, isolated, blocked pawns
-    // TODO: development
 }
 
 impl Piece {
