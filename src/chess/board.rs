@@ -34,6 +34,13 @@ impl Color {
             Self::Black => Self::White,
         }
     }
+
+    pub fn zobrist_index(&self) -> usize {
+        match self {
+            Self::White => 0,
+            Self::Black => 1,
+        }
+    }
 }
 
 #[repr(u8)]
@@ -58,6 +65,12 @@ impl From<u8> for PieceType {
             6 => Self::King,
             _ => unreachable!()
         }
+    }
+}
+
+impl PieceType {
+    pub fn zobrist_index(self) -> usize {
+        (self as u8 - 1) as usize
     }
 }
 
@@ -135,12 +148,11 @@ type BoardIndex = u8;
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Board {
     pub squares: [[Option<Piece>; 8]; 8], // encoded as Option<Piece<NonZeroU8>> which is u8 with 0 representing None, Rust is cool
-    pub white_king_move: bool,
-    pub black_king_move: bool,
-    pub white_castled: bool,
-    pub black_castled: bool,
+    pub left_castling_rights: [bool; 2],
+    pub right_castling_rights: [bool; 2],
     pub last_move: Option<Move>, // used for detecting e.g. en passant
-    pub next_player: Color
+    pub next_player: Color,
+    pub zobrist_hash: u64,
 }
 
 impl Board {
@@ -167,14 +179,6 @@ impl Board {
     pub fn coords_with_piece_of_color(&self, color: Color) -> impl Iterator<Item=Vector> + use<'_> {
         self.coords().filter(move |c| if let Some(piece) = self.piece_at(*c) { piece.color() == color } else { false } )
     }
-
-    pub fn castled(&self, color: Color) -> bool {
-        match color {
-            Color::White => self.white_castled,
-            Color::Black => self.black_castled,
-        }
-    }
-
 }
 
 impl Default for Board {
@@ -203,12 +207,11 @@ impl Default for Board {
         
         Self {
             squares,
-            white_king_move: false,
-            black_king_move: false,
-            white_castled: false,
-            black_castled: false,
+            left_castling_rights: [true; 2],
+            right_castling_rights: [true; 2],
             last_move: None,
             next_player: White,
+            zobrist_hash: 0,
         }
     }
 }

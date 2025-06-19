@@ -209,10 +209,10 @@ impl Board {
         moves.append(&mut self.generate_moves_to_squares(coord, piece, dsts));
 
         // Castling - TODO: missing check for blocking checks
-        if !self.castled(piece.color()) {
-            let y: i8 = if piece.color() == White { 7 } else { 0 };
+        let y: i8 = if piece.color() == White { 7 } else { 0 };
 
-            // Castle left (queen side)
+        // Castle left (queen side)
+        if self.left_castling_rights[piece.color().zobrist_index()] {
             if let (Some(king_piece), Some(rook_piece)) = (self.piece_at(Vector(4, y)), self.piece_at(Vector(0, y))) {
                 let our_king = king_piece.piece_type() == King && king_piece.color() == piece.color();
                 let our_rook = rook_piece.piece_type() == Rook && rook_piece.color() == piece.color();
@@ -221,8 +221,10 @@ impl Board {
                     moves.push(Move { src: coord, dst: Vector(2, y), kind: MoveKind::QueenCastle });
                 }
             }
+        }
 
-            // Castle right (king side)
+        // Castle right (king side)
+        if self.right_castling_rights[piece.color().zobrist_index()] {
             if let (Some(king_piece), Some(rook_piece)) = (self.piece_at(Vector(4, y)), self.piece_at(Vector(7, y))) {
                 let our_king = king_piece.piece_type() == King && king_piece.color() == piece.color();
                 let our_rook = rook_piece.piece_type() == Rook && rook_piece.color() == piece.color();
@@ -231,7 +233,6 @@ impl Board {
                     moves.push(Move { src: coord, dst: Vector(6, y), kind: MoveKind::KingCastle });
                 }
             }
-
         }
 
         moves

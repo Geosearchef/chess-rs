@@ -6,6 +6,7 @@ use crate::chess::vector::Vector;
 use egui::load::TexturePoll;
 use egui::{pos2, vec2, Color32, Frame, Key, PointerButton, Pos2, Rect, Shape, StrokeKind, TextureOptions, Vec2};
 use crate::chess::negamax::negamax_move;
+use crate::chess::zobrist::ZobristTable;
 
 const LIGHT_SQUARE_COLOR: Color32 = Color32::from_rgb(240, 217, 181);
 const DARK_SQUARE_COLOR: Color32 = Color32::from_rgb(181, 136, 99);
@@ -26,19 +27,21 @@ pub struct ChessVisualizer {
     selected_square: Option<Vector>,
     possible_moves: Vec<Move>,
     suggested_move: Option<Move>,
-    auto_move: DoubleTrigger
+    auto_move: DoubleTrigger,
+    zobrist_table: ZobristTable
 }
 
 impl Default for ChessVisualizer {
     fn default() -> Self {
         Self {
-            auto_move_enabled: true,
+            auto_move_enabled: false,
             board: Board::default(),
             move_index: 0,
             selected_square: None,
             possible_moves: vec![],
             suggested_move: None,
-            auto_move: DoubleTrigger::default()
+            auto_move: DoubleTrigger::default(),
+            zobrist_table: ZobristTable::default(),
         }
     }
 }
@@ -144,9 +147,9 @@ impl ChessVisualizer {
 
         if let Some(selected_square) = self.selected_square {
             if let Some(r#move) = self.possible_moves.iter().filter(|m| m.dst == clicked_square).last() {
-                self.board.execute_move(r#move.clone());
+                self.board.execute_move(r#move.clone(), &self.zobrist_table);
 
-                println!("Evaluation: {:.2}", self.board.evaluate_position());
+                println!("Evaluation: {:.2}, Zobrist Hash: {}", self.board.evaluate_position(), self.board.zobrist_hash);
 
                 self.suggested_move = None;
 
@@ -182,7 +185,7 @@ impl ChessVisualizer {
 
     fn execute_suggested_move(&mut self) {
         if let Some(suggested_move) = self.suggested_move {
-            self.board.execute_move(suggested_move); // why can I pass ownership of the move if &mut self is used below?
+            self.board.execute_move(suggested_move, &self.zobrist_table); // why can I pass ownership of the move if &mut self is used below?
             self.suggested_move = None;
         } else {
             println!("No move being suggested");
