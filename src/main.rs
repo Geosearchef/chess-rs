@@ -9,6 +9,7 @@ use eyre::Result;
 mod chess;
 
 fn main() -> Result<()> {
+    println!();
     // let mut board = Board::default();
 
     // for i in 0..10 {

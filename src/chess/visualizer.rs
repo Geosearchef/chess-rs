@@ -34,7 +34,7 @@ pub struct ChessVisualizer {
 impl Default for ChessVisualizer {
     fn default() -> Self {
         Self {
-            auto_move_enabled: false,
+            auto_move_enabled: true,
             board: Board::default(),
             move_index: 0,
             selected_square: None,
@@ -149,7 +149,7 @@ impl ChessVisualizer {
             if let Some(r#move) = self.possible_moves.iter().filter(|m| m.dst == clicked_square).last() {
                 self.board.execute_move(r#move.clone(), &self.zobrist_table);
 
-                println!("Evaluation: {:.2}, Zobrist Hash: {}", self.board.evaluate_position(), self.board.zobrist_hash);
+                // println!("Evaluation: {:.2}, Zobrist Hash: {}", self.board.evaluate_position(), self.board.zobrist_hash);
 
                 self.suggested_move = None;
 
@@ -176,10 +176,10 @@ impl ChessVisualizer {
         let start = Instant::now();
         if let Some((suggested_move, score)) = negamax_move(self.board.clone(), 4) {
             self.suggested_move = Some(suggested_move);
-            println!("Suggested move score: {:.2}, took {:.1} ms", score, start.elapsed().as_millis());
+            println!("Suggested move score: {:.2}, took {:.1} ms\n", score, start.elapsed().as_millis());
         } else {
             self.suggested_move = None;
-            println!("No possible move found");
+            println!("No possible move found\n");
         }
     }
 

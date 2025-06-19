@@ -15,6 +15,7 @@ pub mod evaluation;
 pub mod visualizer;
 mod negamax;
 mod zobrist;
+mod transposition;
 
 impl Board {
     pub fn execute_move(&mut self, r#move: Move, zobrist_table: &ZobristTable) {
