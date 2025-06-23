@@ -57,7 +57,11 @@ fn negamax(board: Board, depth: u8, mut alpha: f64, beta: f64, zobrist_table: &Z
     }
 
     let next_player = board.next_player;
-    let moves = board.generate_moves(next_player);
+    let mut moves = board.generate_moves(next_player);
+
+    // Move ordering
+    moves.sort_by_key(|r#move| r#move.order_score(&board));
+
     let orig_alpha = alpha;
 
     let scores = moves.into_iter().map(|r#move| {

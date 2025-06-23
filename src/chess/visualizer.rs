@@ -174,7 +174,7 @@ impl ChessVisualizer {
 
     fn compute_suggestion(&mut self) {
         let start = Instant::now();
-        if let Some((suggested_move, score)) = negamax_move(self.board.clone(), 5, &self.zobrist_table) {
+        if let Some((suggested_move, score)) = negamax_move(self.board.clone(), 6, &self.zobrist_table) {
             self.suggested_move = Some(suggested_move);
             println!("Suggested move score: {:.2}, took {:.1} ms\n", score, start.elapsed().as_millis());
         } else {
