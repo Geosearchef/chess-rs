@@ -1,12 +1,12 @@
-use std::io::Write;
-use std::time::Instant;
 use crate::chess::board::{Board, Piece, PieceType};
+use crate::chess::negamax::negamax_move;
 use crate::chess::r#move::Move;
 use crate::chess::vector::Vector;
+use crate::chess::zobrist::ZobristTable;
 use egui::load::TexturePoll;
 use egui::{pos2, vec2, Color32, Frame, Key, PointerButton, Pos2, Rect, Shape, StrokeKind, TextureOptions, Vec2};
-use crate::chess::negamax::{negamax_move, OptimizationContext};
-use crate::chess::zobrist::ZobristTable;
+use std::time::Instant;
+use log::warn;
 
 const LIGHT_SQUARE_COLOR: Color32 = Color32::from_rgb(240, 217, 181);
 const DARK_SQUARE_COLOR: Color32 = Color32::from_rgb(181, 136, 99);
@@ -18,7 +18,8 @@ const SUGGESTED_MOVE_COLOR: Color32 = Color32::from_rgb(118, 150, 72);
 const SQUARE_SIZE: Vec2 = vec2(50.0, 50.0);
 const RECT_UV_ALL: Rect = Rect { min: pos2(0.0, 0.0), max: pos2(1.0, 1.0) };
 
-const PIECE_IMAGES_PATH: &str = "file://./assets/pieces/";
+
+
 
 pub struct ChessVisualizer {
     auto_move_enabled: bool,
@@ -28,7 +29,8 @@ pub struct ChessVisualizer {
     possible_moves: Vec<Move>,
     suggested_move: Option<Move>,
     auto_move: DoubleTrigger,
-    zobrist_table: ZobristTable
+    zobrist_table: ZobristTable,
+    search_depth: u8,
 }
 
 impl Default for ChessVisualizer {
@@ -42,6 +44,16 @@ impl Default for ChessVisualizer {
             suggested_move: None,
             auto_move: DoubleTrigger::default(),
             zobrist_table: ZobristTable::default(),
+            search_depth: 6,
+        }
+    }
+}
+
+impl ChessVisualizer {
+    pub fn with_search_depth(search_depth: u8) -> Self {
+        Self {
+            search_depth,
+            ..Self::default()
         }
     }
 }
@@ -144,6 +156,10 @@ impl eframe::App for ChessVisualizer {
 impl ChessVisualizer {
     fn board_left_clicked(&mut self, pos: Pos2) {
         let clicked_square = Self::to_board_space(pos);
+        if !clicked_square.is_on_board() {
+            warn!("Clicked outside of board, ignoring.");
+            return;
+        }
 
         if let Some(selected_square) = self.selected_square {
             if let Some(r#move) = self.possible_moves.iter().filter(|m| m.dst == clicked_square).last() {
@@ -173,10 +189,18 @@ impl ChessVisualizer {
     }
 
     fn compute_suggestion(&mut self) {
+
+        #[cfg(not(target_arch = "wasm32"))]
         let start = Instant::now();
-        if let Some((suggested_move, score)) = negamax_move(self.board.clone(), 6, &self.zobrist_table) {
+
+        if let Some((suggested_move, score)) = negamax_move(self.board.clone(), self.search_depth, &self.zobrist_table) {
             self.suggested_move = Some(suggested_move);
+
+            #[cfg(not(target_arch = "wasm32"))]
             println!("Suggested move score: {:.2}, took {:.1} ms\n", score, start.elapsed().as_millis());
+
+            #[cfg(target_arch = "wasm32")]
+            println!("Suggested move score: {:.2}", score);
         } else {
             self.suggested_move = None;
             println!("No possible move found\n");
@@ -207,8 +231,7 @@ impl ChessVisualizer {
         };
 
         let color_code = if piece.is_white() { "l" } else { "d" };
-
-        format!("{}{}{}t.png", PIECE_IMAGES_PATH, piece_code, color_code)
+        format!("{}{}{}t.png", piece_images_path(), piece_code, color_code)
     }
 
     fn to_screen_space(square: Vector) -> Pos2 {
@@ -218,6 +241,22 @@ impl ChessVisualizer {
     fn to_board_space(pos: Pos2) -> Vector {
         Vector((pos.x / SQUARE_SIZE.x).floor() as i8, (pos.y / SQUARE_SIZE.y).floor() as i8)
     }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn piece_images_path() -> String {
+    "file://./assets/pieces/".to_owned()
+}
+#[cfg(target_arch = "wasm32")]
+fn piece_images_path() -> String {
+    let window = web_sys::window();
+    let location = window.expect("window missing").location();
+
+    format!("{}//{}{}assets/pieces/",
+            location.protocol().expect("protocol missing"),
+            location.host().expect("host missing"), // TODO: missing port? all in one?
+            location.pathname().expect("path missing"),
+    )
 }
 
 

@@ -14,7 +14,15 @@ itertools = "0.14.0"
 ordered-float = "5.0.0"
 rand = "0.9.0"
 rand_chacha = "0.9.0"
+getrandom = { version = "0.3.3", features = ["wasm_js"] }
 rayon = "1.10.0"
+log = "0.4.27"
+wasm-bindgen = "0.2.100"
+wasm-bindgen-futures = "0.4.50"
+web-sys = "0.3.77"
 
 [profile.dev]
 opt-level = 3 # TODO: temporary fix for release not printing to stdout
+
+[[bin]]
+name = "run_ui"
