@@ -36,7 +36,7 @@ fn main() -> Result<()> {
     eframe::run_native(
         "Chess-RS",
         options,
-        app_creator(NATIVE_SEARCH_DEPTH),
+        app_creator(NATIVE_SEARCH_DEPTH, 1.0),
     ).map_err(|e| eyre!("{:?}", e))
 }
 
@@ -55,20 +55,20 @@ fn main() -> Result<()> {
     wasm_bindgen_futures::spawn_local(async {
         let document = web_sys::window().expect("no window").document().expect("no document");
         let canvas = document.get_element_by_id("main-canvas").expect("canvas not found").dyn_into::<HtmlCanvasElement>().expect("the canvas is not a canvas");
-        eframe::WebRunner::new().start(canvas, options, app_creator(WEB_SEARCH_DEPTH)).await.expect("couldn't start webapp");
+        eframe::WebRunner::new().start(canvas, options, app_creator(WEB_SEARCH_DEPTH, 1.0)).await.expect("couldn't start webapp");
     });
 
     Ok(())
 }
 
-fn app_creator(search_depth: u8) -> AppCreator<'static> {
+fn app_creator(search_depth: u8, zoom_factor: f32) -> AppCreator<'static> {
     Box::new(move |cc| {
         let style = Style {
             visuals: Visuals::light(),
             ..Style::default()
         };
         cc.egui_ctx.set_style(style);
-        cc.egui_ctx.set_zoom_factor(2.0);
+        cc.egui_ctx.set_zoom_factor(zoom_factor);
 
         egui_extras::install_image_loaders(&cc.egui_ctx);
 
